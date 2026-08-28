@@ -106,7 +106,7 @@ core::StringParameter
             _("Listen on the specified network address"),
             "all");
 
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 core::BoolParameter dnssd("dnssd",_("Advertise server with DNS-SD."), true);
 #else
 const bool dnssd = false;

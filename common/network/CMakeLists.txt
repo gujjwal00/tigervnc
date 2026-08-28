@@ -14,9 +14,9 @@ endif()
 target_include_directories(network PUBLIC ${CMAKE_SOURCE_DIR}/common)
 target_link_libraries(network core rdr)
 
-if(AVAHI_FOUND)
-  target_include_directories(network PRIVATE ${AVAHI_INCLUDE_DIRS})
-  target_link_libraries(network ${AVAHI_LIBRARIES})
+if(AVAHI_CLIENT_FOUND)
+  target_include_directories(network PRIVATE ${AVAHI_CLIENT_INCLUDE_DIRS})
+  target_link_libraries(network ${AVAHI_CLIENT_LIBRARIES})
 endif()
 
 if(WIN32)

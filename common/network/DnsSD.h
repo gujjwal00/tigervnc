@@ -24,6 +24,8 @@
 
 #include <network/Socket.h>
 
+struct AvahiPoll;
+
 namespace network
 {
   namespace dnssd
@@ -40,6 +42,7 @@ namespace network
       void (*handleReadyWatch)(int fd) = NULL;
     };
 
+    void initialize(const AvahiPoll* api);
     void initialize(WatchAdapter* adapter);
     void advertise(std::string name, std::list<SocketListener*>& listeners);
     void shutdown();

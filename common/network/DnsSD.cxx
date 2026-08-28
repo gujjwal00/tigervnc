@@ -20,7 +20,7 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
 #include <avahi-common/alternative.h>
@@ -43,7 +43,7 @@
 using namespace network;
 using namespace network::dnssd;
 
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 
 // Service to be advertised through Avahi
 struct Service {
@@ -190,7 +190,7 @@ static void handleReadyWatch(int fd)
   }
 }
 
-static void createAvahiClient(AvahiPoll* api)
+static void createAvahiClient(const AvahiPoll* api)
 {
   assert(api);
   assert(!avahiClient);
@@ -199,7 +199,7 @@ static void createAvahiClient(AvahiPoll* api)
   avahiClient = avahi_client_new(
       api,
       AvahiClientFlags::AVAHI_CLIENT_NO_FAIL, // Wait for daemon if not running
-      clientCallback, api, &error);
+      clientCallback, (void*)api, &error);
 
   if (!avahiClient)
     throw std::runtime_error(
@@ -353,9 +353,10 @@ static int getInterfaceForAddress(const vnc_sockaddr& addr)
        IN6_IS_ADDR_UNSPECIFIED(&addr.u.sin6.sin6_addr)))
     return AVAHI_IF_UNSPEC;
 
+  int iface = 0;
   ifaddrs* head = NULL;
   if (getifaddrs(&head) != 0)
-    return 0;
+    return iface;
 
   char* ifname = NULL;
   for (const ifaddrs* ifa = head; ifa != NULL; ifa = ifa->ifa_next) {
@@ -377,13 +378,12 @@ static int getInterfaceForAddress(const vnc_sockaddr& addr)
     }
   }
 
+  if (ifname)
+    iface = if_nametoindex(ifname);
   if (head)
     freeifaddrs(head);
 
-  if (ifname)
-    return if_nametoindex(ifname);
-
-  return 0;
+  return iface;
 }
 
 static std::list<Service*> createServices(std::string name,
@@ -442,14 +442,24 @@ static std::list<Service*> createServices(std::string name,
 
 /******************************************************************************/
 
+void dnssd::initialize(const AvahiPoll* api)
+{
+#ifdef HAVE_AVAHI_CLIENT
+  assert(poll);
+  createAvahiClient(api);
+#else
+  (void)api;
+#endif
+}
+
 void dnssd::initialize(WatchAdapter* adapter)
 {
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 
   assert(adapter);
-  createAdaptivePoll(adapter);
-  createAvahiClient(&aPoll->api);
   adapter->handleReadyWatch = &handleReadyWatch;
+  createAdaptivePoll(adapter);
+  initialize(&aPoll->api);
 
 #else
   (void)adapter;
@@ -458,7 +468,7 @@ void dnssd::initialize(WatchAdapter* adapter)
 
 void dnssd::advertise(std::string name, std::list<SocketListener*>& listeners)
 {
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 
   assert(avahiClient);
 
@@ -476,12 +486,14 @@ void dnssd::advertise(std::string name, std::list<SocketListener*>& listeners)
 
 void dnssd::shutdown()
 {
-#ifdef HAVE_AVAHI
+#ifdef HAVE_AVAHI_CLIENT
 
   destroyAvahiClient();
-  delete aPoll;
-  aPoll = NULL;
-
+  if (aPoll) {
+    aPoll->adapter->handleReadyWatch = NULL;
+    delete aPoll;
+    aPoll = NULL;
+  }
   for (auto service : services)
     delete service;
   services.clear();
