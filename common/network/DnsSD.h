@@ -32,6 +32,7 @@ namespace network
   {
     // Bridge between DnsSD implementation & event loop of the app
     struct WatchAdapter {
+      virtual ~WatchAdapter() {}
 
       // Called by DnsSD to get notified when given fd becomes readable/writable
       virtual void addWatch(int fd, bool read, bool write) = 0;
@@ -39,7 +40,7 @@ namespace network
 
       // Called by the app to report when fd is ready
       // This is set by initialize()
-      void (*handleReadyWatch)(int fd) = NULL;
+      bool (*handleReadyWatch)(int fd) = NULL;
     };
 
     void initialize(const AvahiPoll* api);

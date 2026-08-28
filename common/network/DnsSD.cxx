@@ -170,10 +170,11 @@ static void createAdaptivePoll(WatchAdapter* adapter)
   };
 }
 
-static void handleReadyWatch(int fd)
+static bool handleReadyWatch(int fd)
 {
+  bool handled = false;
   if (!aPoll)
-    return;
+    return handled;
 
   for (auto w : aPoll->watches) {
     if (fd == w->fd) {
@@ -186,8 +187,11 @@ static void handleReadyWatch(int fd)
         w->revent = (AvahiWatchEvent)pfd.revents;
         w->callback(w, w->fd, w->revent, w->userdata);
       }
+      handled = true;
     }
   }
+
+  return handled;
 }
 
 static void createAvahiClient(const AvahiPoll* api)
